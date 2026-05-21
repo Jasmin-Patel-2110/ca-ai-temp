@@ -1,0 +1,16 @@
+bcrypt>=5.0.0
+boto3>=1.42.71
+chromadb>=1.5.5
+fastapi>=0.135.1
+pandas>=2.2.3,<3.0.0
+pillow>=12.1.1
+pydantic[email]>=2.12.5
+pymupdf>=1.27.2
+pymysql>=1.1.2
+python-dotenv>=1.2.2
+python-jose[cryptography]>=3.5.0
+python-multipart>=0.0.22
+requests>=2.32.5
+river>=0.21.0
+sentence-transformers>=5.3.0
+uvicorn[standard]>=0.42.0

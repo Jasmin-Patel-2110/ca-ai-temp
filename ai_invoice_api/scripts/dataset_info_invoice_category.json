@@ -1,0 +1,12 @@
+{
+  "invoice_category": {
+    "file_name": "invoice_category_train.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "images": "images"
+    }
+  }
+}
+ 

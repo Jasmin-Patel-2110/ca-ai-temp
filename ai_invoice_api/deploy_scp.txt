@@ -1,0 +1,13 @@
+scp -i "C:\Users\sahaj\Downloads\AutomatedCATool.pem" "D:\Sahaj_Work_place\ai_invocie\invoice_api\app\models\invoice.py" ubuntu@3.85.50.179:/home/ubuntu/invoice_ai/api_invoice/invoice_api/app/models/
+
+scp -i "C:\Users\sahaj\Downloads\AutomatedCATool.pem" "D:\Sahaj_Work_place\ai_invocie\invoice_api\app\schemas\invoice.py" ubuntu@3.85.50.179:/home/ubuntu/invoice_ai/api_invoice/invoice_api/app/schemas/
+
+scp -i "C:\Users\sahaj\Downloads\AutomatedCATool.pem" "D:\Sahaj_Work_place\ai_invocie\invoice_api\app\services\extraction_service.py" ubuntu@3.85.50.179:/home/ubuntu/invoice_ai/api_invoice/invoice_api/app/services/
+
+scp -i "C:\Users\sahaj\Downloads\AutomatedCATool.pem" "D:\Sahaj_Work_place\ai_invocie\invoice_api\app\services\s3_service.py" ubuntu@3.85.50.179:/home/ubuntu/invoice_ai/api_invoice/invoice_api/app/services/
+
+scp -i "C:\Users\sahaj\Downloads\AutomatedCATool.pem" "D:\Sahaj_Work_place\ai_invocie\invoice_api\app\routers\invoices.py" ubuntu@3.85.50.179:/home/ubuntu/invoice_ai/api_invoice/invoice_api/app/routers/
+
+scp -i "C:\Users\sahaj\Downloads\AutomatedCATool.pem" "D:\Sahaj_Work_place\ai_invocie\invoice_api\scripts\export_training_data.py" ubuntu@3.85.50.179:/home/ubuntu/invoice_ai/api_invoice/invoice_api/scripts/
+
+scp -i "C:\Users\sahaj\Downloads\AutomatedCATool.pem" "D:\Sahaj_Work_place\ai_invocie\invoice_api\scripts\dataset_info_invoice_category.json" ubuntu@3.85.50.179:/home/ubuntu/invoice_ai/api_invoice/invoice_api/scripts/
