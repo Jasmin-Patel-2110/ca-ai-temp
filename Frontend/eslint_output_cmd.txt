@@ -1,0 +1,155 @@
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\actions\invoices.ts
+   22:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   37:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   42:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   59:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   64:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  105:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\actions\upload.ts
+   80:17  error  Strings must use doublequote              @stylistic/quotes
+   90:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  118:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\dashboard\export\page.tsx
+   67:50  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   92:36  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  177:17  error  '_id' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  177:22  error  'Status' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  190:61  error  Strings must use doublequote                 @stylistic/quotes
+  207:16  error  'err' is defined but never used              @typescript-eslint/no-unused-vars
+  222:16  error  'err' is defined but never used              @typescript-eslint/no-unused-vars
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\dashboard\invoices\[id]\page.tsx
+  317:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  350:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\dashboard\invoices\page.tsx
+  172:7   error  'INLINE_EDITABLE_KEYS' is assigned a value but only used as a type  @typescript-eslint/no-unused-vars
+  182:6   error  'InlineEditKey' is defined but never used                           @typescript-eslint/no-unused-vars
+  425:28  error  '_' is assigned a value but never used                              @typescript-eslint/no-unused-vars
+  703:55  error  Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  716:53  error  Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\dashboard\layout.tsx
+  26:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\dashboard\layout.tsx:26:5
+  24 |
+  25 |   useEffect(() => {
+> 26 |     setMounted(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  27 |     if (!token) {
+  28 |       router.push("/login");
+  29 |     }  react-hooks/set-state-in-effect
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\dashboard\page.tsx
+   96:52  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+   96:60  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+  100:16  error    'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  109:21  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\dashboard\page.tsx:109:21
+  107 |   };
+  108 |
+> 109 |   useEffect(() => { fetchDashboard(); }, []);
+      |                     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  110 |
+  111 |   // ── Stat cards config ─────────────────────────────────────────────────────
+  112 |   const statCards = [  react-hooks/set-state-in-effect
+  109:42  warning  React Hook useEffect has a missing dependency: 'fetchDashboard'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react-hooks/exhaustive-deps
+  187:57  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react/no-unescaped-entities
+  187:83  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react/no-unescaped-entities
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\dashboard\settings\page.tsx
+  19:17  error  'token' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  55:26  error  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  81:14  error  'error' is defined but never used           @typescript-eslint/no-unused-vars
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\login\page.tsx
+  79:14  error  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\app\register\page.tsx
+  71:14  error  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\components\layout\AppHeader.tsx
+  5:29  error  'title' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\components\layout\AppSidebar.tsx
+  30:9  error  'initials' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\components\ui\calendar.tsx
+  2:10  error  'ChevronLeft' is defined but never used   @typescript-eslint/no-unused-vars
+  2:23  error  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\components\ui\chart.tsx
+   62:55  error  '_' is defined but never used             @typescript-eslint/no-unused-vars
+  101:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  102:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  105:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  236:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\components\ui\command.tsx
+  40:52  error  Unknown property 'cmdk-input-wrapper' found  react/no-unknown-property
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\components\upload\BulkUpload.tsx
+    1:20  error  'useEffect' is defined but never used              @typescript-eslint/no-unused-vars
+    6:3   error  'Eye' is defined but never used                    @typescript-eslint/no-unused-vars
+  404:10  error  'preUploadIds' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  434:53  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  459:15  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  462:28  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  462:36  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  465:83  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  465:91  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  466:44  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\components\upload\InvoiceForm.tsx
+  106:17  error  Strings must use doublequote  @stylistic/quotes
+  107:26  error  Strings must use doublequote  @stylistic/quotes
+  108:29  error  Strings must use doublequote  @stylistic/quotes
+  109:24  error  Strings must use doublequote  @stylistic/quotes
+  110:29  error  Strings must use doublequote  @stylistic/quotes
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\hooks\use-toast.ts
+  14:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\lib\apiService.ts
+  43:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  62:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\lib\redux\StoreProvider.tsx
+  17:27  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\PREMIUM\Downloads\cleaned_project\src\lib\redux\StoreProvider.tsx:17:27
+  15 |   }
+  16 |
+> 17 |   return <Provider store={storeRef.current}>{children}</Provider>;
+     |                           ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  18 | }
+  19 |  react-hooks/refs
+
+✖ 71 problems (70 errors, 1 warning)
+  7 errors and 0 warnings potentially fixable with the `--fix` option.
+
