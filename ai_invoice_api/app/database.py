@@ -53,6 +53,39 @@ def init_db():
             ]:
                 cur.execute(col_sql)
 
+            # ── Invoices table (full definition for fresh DBs) ────────────────
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS invoices (
+                    id                 INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    user_id            VARCHAR(50)   NOT NULL,
+                    doc_id             VARCHAR(50)   NOT NULL,
+                    invoice_number     VARCHAR(100)  DEFAULT NULL,
+                    client_name        VARCHAR(255),
+                    label_type         VARCHAR(20)   NOT NULL DEFAULT 'accounting',
+                    industry           VARCHAR(255),
+                    category           VARCHAR(255),
+                    sub_category       VARCHAR(255),
+                    transaction_type   VARCHAR(100),
+                    status             VARCHAR(50)   DEFAULT 'pending_extraction',
+                    invoice_date       DATE,
+                    gst                VARCHAR(50),
+                    cgst               VARCHAR(50),
+                    sgst               VARCHAR(50),
+                    igst               VARCHAR(50),
+                    total              VARCHAR(50),
+                    quantity           VARCHAR(50),
+                    rate               VARCHAR(50),
+                    amount             DOUBLE,
+                    amount_paid        DOUBLE,
+                    balance_amount     DOUBLE,
+                    payment_mode       VARCHAR(100),
+                    additional_detail  LONGTEXT,
+                    is_line_item_split TINYINT(1)    NOT NULL DEFAULT 0,
+                    created_datetime   DATETIME      DEFAULT CURRENT_TIMESTAMP,
+                    updated_datetime   DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """)
+
             # ── Invoices new columns (safe to run every startup) ───────────────
             cur.execute(
                 "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "
@@ -91,7 +124,12 @@ def init_db():
                 cur.execute(col_sql)
 
             # Drop legacy columns
-            for legacy_col in ("pan_number", "contact_number", "location", "gst_number"):
+            for legacy_col in (
+                "pan_number",
+                "contact_number",
+                "location",
+                "gst_number",
+            ):
                 try:
                     cur.execute(
                         "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
@@ -119,39 +157,6 @@ def init_db():
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """)
 
-            # ── Invoices table (full definition for fresh DBs) ────────────────
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS invoices (
-                    id                 INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
-                    user_id            VARCHAR(50)   NOT NULL,
-                    doc_id             VARCHAR(50)   NOT NULL,
-                    invoice_number     VARCHAR(100)  DEFAULT NULL,
-                    client_name        VARCHAR(255),
-                    label_type         VARCHAR(20)   NOT NULL DEFAULT 'accounting',
-                    industry           VARCHAR(255),
-                    category           VARCHAR(255),
-                    sub_category       VARCHAR(255),
-                    transaction_type   VARCHAR(100),
-                    status             VARCHAR(50)   DEFAULT 'pending_extraction',
-                    invoice_date       DATE,
-                    gst                VARCHAR(50),
-                    cgst               VARCHAR(50),
-                    sgst               VARCHAR(50),
-                    igst               VARCHAR(50),
-                    total              VARCHAR(50),
-                    quantity           VARCHAR(50),
-                    rate               VARCHAR(50),
-                    amount             DOUBLE,
-                    amount_paid        DOUBLE,
-                    balance_amount     DOUBLE,
-                    payment_mode       VARCHAR(100),
-                    additional_detail  LONGTEXT,
-                    is_line_item_split TINYINT(1)    NOT NULL DEFAULT 0,
-                    created_datetime   DATETIME      DEFAULT CURRENT_TIMESTAMP,
-                    updated_datetime   DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """)
-
             # ── Documents table ───────────────────────────────────────────────
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS documents (
@@ -170,10 +175,12 @@ def init_db():
                 cur.execute(
                     "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
                     "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'documents' AND COLUMN_NAME = 'invoice_id'",
-                    (DB_NAME,)
+                    (DB_NAME,),
                 )
                 if cur.fetchone():
-                    cur.execute("ALTER TABLE documents ADD COLUMN doc_id VARCHAR(50) DEFAULT NULL")
+                    cur.execute(
+                        "ALTER TABLE documents ADD COLUMN doc_id VARCHAR(50) DEFAULT NULL"
+                    )
                     cur.execute("""
                         UPDATE documents d
                         JOIN invoices i ON d.invoice_id = i.id
@@ -183,9 +190,13 @@ def init_db():
                         DELETE d1 FROM documents d1
                         JOIN documents d2 ON d1.doc_id = d2.doc_id AND d1.id > d2.id
                     """)
-                    cur.execute("ALTER TABLE documents MODIFY doc_id VARCHAR(50) NOT NULL")
+                    cur.execute(
+                        "ALTER TABLE documents MODIFY doc_id VARCHAR(50) NOT NULL"
+                    )
                     try:
-                        cur.execute("ALTER TABLE documents DROP FOREIGN KEY documents_ibfk_1")
+                        cur.execute(
+                            "ALTER TABLE documents DROP FOREIGN KEY documents_ibfk_1"
+                        )
                     except Exception:
                         pass
                     try:
@@ -193,7 +204,9 @@ def init_db():
                     except Exception:
                         pass
                     try:
-                        cur.execute("ALTER TABLE documents ADD UNIQUE KEY uk_doc_id (doc_id)")
+                        cur.execute(
+                            "ALTER TABLE documents ADD UNIQUE KEY uk_doc_id (doc_id)"
+                        )
                     except Exception:
                         pass
             except Exception:
@@ -204,10 +217,12 @@ def init_db():
                 cur.execute(
                     "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
                     "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'invoices' AND COLUMN_NAME = 'subcategory'",
-                    (DB_NAME,)
+                    (DB_NAME,),
                 )
                 if cur.fetchone():
-                    cur.execute("ALTER TABLE invoices CHANGE COLUMN subcategory sub_category VARCHAR(255)")
+                    cur.execute(
+                        "ALTER TABLE invoices CHANGE COLUMN subcategory sub_category VARCHAR(255)"
+                    )
             except Exception:
                 pass
 
@@ -216,10 +231,12 @@ def init_db():
                 cur.execute(
                     "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
                     "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'invoices' AND COLUMN_NAME = 'invoice_datetime'",
-                    (DB_NAME,)
+                    (DB_NAME,),
                 )
                 if cur.fetchone():
-                    cur.execute("ALTER TABLE invoices CHANGE COLUMN invoice_datetime invoice_date DATE")
+                    cur.execute(
+                        "ALTER TABLE invoices CHANGE COLUMN invoice_datetime invoice_date DATE"
+                    )
             except Exception:
                 pass
 
@@ -228,19 +245,24 @@ def init_db():
                 cur.execute(
                     "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
                     "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'invoices' AND COLUMN_NAME = 'invoice_dateonly'",
-                    (DB_NAME,)
+                    (DB_NAME,),
                 )
                 if cur.fetchone():
-                    cur.execute("ALTER TABLE invoices CHANGE COLUMN invoice_dateonly invoice_date DATE")
+                    cur.execute(
+                        "ALTER TABLE invoices CHANGE COLUMN invoice_dateonly invoice_date DATE"
+                    )
             except Exception:
                 pass
 
             # Migrate s3_key/s3_url from invoices to documents
             try:
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
                     WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'invoices' AND COLUMN_NAME = 's3_key'
-                """, (DB_NAME,))
+                """,
+                    (DB_NAME,),
+                )
                 if cur.fetchone():
                     cur.execute("""
                         INSERT IGNORE INTO documents (doc_id, doc_name, s3_key, s3_url)
@@ -271,10 +293,19 @@ def init_db():
                 WHERE transaction_type NOT IN ('Sales', 'Expense', 'Purchase', 'Other')
                    AND transaction_type IS NOT NULL
             """)
-            cur.execute("UPDATE invoices SET industry = NULL WHERE industry = 'Jwellers'")
+            cur.execute(
+                "UPDATE invoices SET industry = NULL WHERE industry = 'Jwellers'"
+            )
             _INDUSTRY_VALID = (
-                "Textile Manufacturing", "Textile Jobwork", "Supari", "Labour",
-                "Jewellers", "IT", "Gov", "Hospital", "Diamond"
+                "Textile Manufacturing",
+                "Textile Jobwork",
+                "Supari",
+                "Labour",
+                "Jewellers",
+                "IT",
+                "Gov",
+                "Hospital",
+                "Diamond",
             )
             placeholders = ", ".join("%s" for _ in _INDUSTRY_VALID)
             cur.execute(

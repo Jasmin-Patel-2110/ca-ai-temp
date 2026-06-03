@@ -10,9 +10,6 @@ export async function uploadInvoiceAction(formData: FormData): Promise<{ success
     return { success: false, error: "No file uploaded" };
   }
 
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-
   // Mock extraction data (similar to ledger-light/src/lib/api.ts)
   const mockData: ExtractionResult = {
     data: {

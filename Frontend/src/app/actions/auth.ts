@@ -8,8 +8,6 @@ import { decodeJWT } from "@/lib/utils";
 import { LoginApiResponse, RegisterApiResponse, ApiErrorResponse, UpdateUserPayload, UpdateUserResponse } from "@/types/authenticationTypes";
 
 export async function loginAction(formData: FormData) {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000));
 
   const validatedFields = LoginSchema.safeParse(Object.fromEntries(formData.entries()));
 
