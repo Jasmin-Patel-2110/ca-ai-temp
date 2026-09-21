@@ -3,6 +3,8 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "../..");
 const venv = process.env.VENV_DIR || "/workspace/venvs/ca-ai";
 const model = process.env.VLLM_MODEL || "Qwen/Qwen3-VL-8B-Thinking-FP8";
+const vllmPort = process.env.VLLM_PORT || "8002";
+const frontendPort = process.env.FRONTEND_PORT || "3002";
 const runtimeEnv = { ...process.env, pmx: "false" };
 delete runtimeEnv.io;
 delete runtimeEnv.trace;
@@ -18,7 +20,7 @@ module.exports = {
         "serve",
         model,
         "--host", "127.0.0.1",
-        "--port", "8001",
+        "--port", vllmPort,
         "--served-model-name", model,
         "--reasoning-parser", "qwen3",
         "--max-model-len", process.env.VLLM_MAX_MODEL_LEN || "32768",
@@ -49,7 +51,7 @@ module.exports = {
       name: "ca-ai-frontend",
       cwd: path.join(root, "Frontend"),
       script: "npm",
-      args: ["start", "--", "--hostname", "127.0.0.1", "--port", "3001"],
+      args: ["start", "--", "--hostname", "127.0.0.1", "--port", frontendPort],
       autorestart: true,
       restart_delay: 3000,
       kill_timeout: 10000,

@@ -4,7 +4,7 @@ import os
 
 import requests
 
-VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8001").rstrip("/")
+VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8002").rstrip("/")
 VLLM_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen3-VL-8B-Thinking-FP8")
 
 _model_checked: bool = False
@@ -34,7 +34,7 @@ def ensure_model_available() -> None:
     if not is_vllm_running():
         raise RuntimeError(
             f"Cannot reach vLLM at {VLLM_BASE_URL}. "
-            "Start the server first, e.g. on port 8001 (see start.sh comments)."
+            "Start the server first, e.g. on port 8002 (see start.sh comments)."
         )
 
     try:

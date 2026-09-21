@@ -21,7 +21,7 @@ from typing import Optional
 import requests
 from PIL import Image
 
-VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8001").rstrip("/")
+VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8002").rstrip("/")
 VISION_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen3-VL-8B-Thinking-FP8")
 _VLLM_API_KEY = os.getenv("VLLM_API_KEY", "").strip()
 # Bookkeeping entity (e.g. "Satyawani"). If set: entity in Bill To/client → Purchase; entity as supplier → Sales

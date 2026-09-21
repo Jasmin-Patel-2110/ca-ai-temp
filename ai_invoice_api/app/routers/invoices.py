@@ -238,11 +238,11 @@ def upload_invoice(
     for i, f in enumerate(files):
         logging.info(f"[upload] [{i+1}] filename={f.filename!r} content_type={f.content_type!r}")
 
-    # Check vLLM once before processing (runs separately, e.g. port 8001)
+    # Check vLLM once before processing (runs separately, e.g. port 8002)
     if not is_vllm_running():
         raise HTTPException(
             status_code=503,
-            detail="vLLM is not reachable. Start it on the configured VLLM_BASE_URL (default http://127.0.0.1:8001).",
+            detail="vLLM is not reachable. Start it on the configured VLLM_BASE_URL (default http://127.0.0.1:8002).",
         )
     try:
         ensure_model_available()

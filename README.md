@@ -9,9 +9,9 @@ Docker image remains generic Runpod template. Clone this repository once into pe
 ### Runpod template
 
 - GPU: L40S 48 GB recommended. RTX 4090, L40, Ada 6000, or H100 also support FP8.
-- Network volume: at least 80 GB mounted at `/workspace`. Model cache, Python environment, MariaDB, and ChromaDB live there.
-- Exposed HTTP port: `3000` only. Ports `3306`, `8000`, and `8001` remain internal.
-- Container disk: 20 GB or more.
+- Network volume: at least 80 GB mounted at `/workspace`. Model cache, Python environment, ChromaDB, and uploaded documents live there.
+- Exposed HTTP port: `3000` only. Internal service ports are `3002` (frontend), `3306`, `8000`, and `8002` (vLLM).
+- Container disk: 20 GB or more. MariaDB uses local container storage because Runpod network volumes reject its ownership changes.
 
 For a 24 GB GPU, edit `.env.runpod` after setup and use:
 
@@ -50,7 +50,7 @@ Setup performs these one-time operations:
 1. Creates `/workspace/venvs/ca-ai` with current vLLM and backend dependencies.
 2. Builds Next.js frontend.
 3. Generates `.env.runpod` with random JWT and MariaDB secrets.
-4. Initializes persistent MariaDB, ChromaDB, and local document storage under `/workspace/ca-ai-data`.
+4. Initializes MariaDB on container disk plus persistent ChromaDB and document storage under `/workspace/ca-ai-data`.
 5. Configures Nginx on public port `3000`.
 6. Starts frontend, backend, and vLLM under PM2.
 

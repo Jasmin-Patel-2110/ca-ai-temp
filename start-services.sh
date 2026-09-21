@@ -14,6 +14,8 @@ VENV_DIR="${VENV_DIR:-/workspace/venvs/ca-ai}"
 DATA_DIR="${DATA_DIR:-/workspace/ca-ai-data}"
 MYSQL_DATA_DIR="${MYSQL_DATA_DIR:-/var/lib/mysql}"
 PM2_CONFIG="${ROOT_DIR}/deploy/runpod/ecosystem.config.cjs"
+FRONTEND_PORT="${FRONTEND_PORT:-3002}"
+VLLM_PORT="${VLLM_PORT:-8002}"
 
 require_root() {
     if [[ "${EUID}" -ne 0 ]]; then
@@ -31,6 +33,11 @@ load_env() {
     # shellcheck disable=SC1090
     source "${ENV_FILE}"
     set +a
+    export FRONTEND_PORT="${FRONTEND_PORT:-3002}"
+    export VLLM_PORT="${VLLM_PORT:-8002}"
+    if [[ "${VLLM_BASE_URL:-}" == "http://127.0.0.1:8001" ]]; then
+        export VLLM_BASE_URL="http://127.0.0.1:${VLLM_PORT}"
+    fi
     export NO_PROXY="${NO_PROXY:-127.0.0.1,localhost}"
     export no_proxy="${no_proxy:-${NO_PROXY}}"
 }
@@ -61,7 +68,9 @@ NEXT_PUBLIC_API_URL=
 CORS_ORIGINS=
 NO_PROXY=127.0.0.1,localhost
 no_proxy=127.0.0.1,localhost
-VLLM_BASE_URL=http://127.0.0.1:8001
+FRONTEND_PORT=${FRONTEND_PORT}
+VLLM_PORT=${VLLM_PORT}
+VLLM_BASE_URL=http://127.0.0.1:${VLLM_PORT}
 VLLM_MODEL=Qwen/Qwen3-VL-8B-Thinking-FP8
 VLLM_MAX_MODEL_LEN=32768
 VLLM_GPU_MEMORY_UTILIZATION=0.90
@@ -163,13 +172,13 @@ start_processes() {
     pm2 delete ca-ai-vllm ca-ai-backend ca-ai-frontend >/dev/null 2>&1 || true
     # vLLM can leave its API-server child alive after PM2 stops the launcher.
     # Clear dedicated internal ports before starting a fresh process set.
-    fuser -k 3001/tcp 8000/tcp 8001/tcp >/dev/null 2>&1 || true
+    fuser -k "${FRONTEND_PORT}/tcp" 3001/tcp 8000/tcp "${VLLM_PORT}/tcp" 8001/tcp >/dev/null 2>&1 || true
     pm2 start "${PM2_CONFIG}" --update-env
     pm2 save --force
 
     for _ in {1..60}; do
         if local_curl --fail --silent --max-time 5 http://127.0.0.1:8000/ >/dev/null \
-            && local_curl --fail --silent --max-time 5 http://127.0.0.1:3001/ >/dev/null; then
+            && local_curl --fail --silent --max-time 5 "http://127.0.0.1:${FRONTEND_PORT}/" >/dev/null; then
             echo "Frontend and API ready. vLLM continues loading model in background."
             echo "Open Runpod HTTP port 3000. Check model: ./start-services.sh status"
             return
@@ -199,7 +208,7 @@ start() {
 stop() {
     pm2 delete ca-ai-vllm ca-ai-backend ca-ai-frontend >/dev/null 2>&1 || true
     if command -v fuser >/dev/null 2>&1; then
-        fuser -k 3001/tcp 8000/tcp 8001/tcp >/dev/null 2>&1 || true
+        fuser -k "${FRONTEND_PORT}/tcp" 3001/tcp 8000/tcp "${VLLM_PORT}/tcp" 8001/tcp >/dev/null 2>&1 || true
     fi
     service nginx stop >/dev/null 2>&1 || true
     service mariadb stop >/dev/null 2>&1 || true
@@ -211,9 +220,9 @@ status() {
     printf "API:      "
     local_curl --fail --silent --max-time 5 http://127.0.0.1:8000/ || true
     printf "\nFrontend: "
-    local_curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3001/ || true
+    local_curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:${FRONTEND_PORT}/" || true
     printf "\nvLLM:     "
-    if local_curl --fail --silent --max-time 5 http://127.0.0.1:8001/health >/dev/null; then
+    if local_curl --fail --silent --max-time 5 "http://127.0.0.1:${VLLM_PORT}/health" >/dev/null; then
         echo ready
     else
         echo loading-or-failed
