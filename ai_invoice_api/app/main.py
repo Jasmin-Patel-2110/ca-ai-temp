@@ -1,6 +1,10 @@
+import os
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from app.config import CORS_ORIGINS, DOCUMENT_STORAGE_DIR
 from app.database import init_db
 from app.routers import auth
 from app.routers import users
@@ -12,6 +16,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
+os.makedirs(DOCUMENT_STORAGE_DIR, exist_ok=True)
+app.mount("/documents", StaticFiles(directory=DOCUMENT_STORAGE_DIR), name="documents")
+
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -21,17 +28,11 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content={"status": exc.status_code, "message": exc.detail},
     )
 
-# CORS: allow LedgerAI frontend (ngrok + local dev)
-_CORS_ORIGINS = [
-    "https://ca-ai.kriit.com",
-    "https://ca-ai-api.kriit.com",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-
+# Browser traffic normally uses the same-origin Nginx proxy. Keep CORS configurable
+# for local development or deployments with separate frontend and API origins.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_CORS_ORIGINS,
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

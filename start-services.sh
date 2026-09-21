@@ -1,23 +1,202 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# 1. Ensure MariaDB runtime directories exist
-mkdir -p /var/run/mysqld
-chown mysql:mysql /var/run/mysqld
-chmod 777 /var/run/mysqld
-mkdir -p /var/lib/mysql
-chown -R mysql:mysql /var/lib/mysql
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# 2. Start background services
-service mariadb start
-service apache2 start
+# Docker image entrypoint runs before repository exists. Preserve Runpod base startup.
+if [[ ! -d "${SCRIPT_DIR}/Frontend" || ! -d "${SCRIPT_DIR}/ai_invoice_api" ]]; then
+    exec /start.sh "$@"
+fi
 
-# Wait a moment to ensure daemon is fully up
-sleep 3 
+ROOT_DIR="${SCRIPT_DIR}"
+ENV_FILE="${ROOT_DIR}/.env.runpod"
+VENV_DIR="${VENV_DIR:-/workspace/venvs/ca-ai}"
+DATA_DIR="${DATA_DIR:-/workspace/ca-ai-data}"
+PM2_CONFIG="${ROOT_DIR}/deploy/runpod/ecosystem.config.cjs"
 
-# 3. Configure MariaDB for phpMyAdmin
-mysql -e "CREATE USER IF NOT EXISTS 'admin'@'localhost' IDENTIFIED BY 'admin2026';"
-mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost' WITH GRANT OPTION;"
-mysql -e "FLUSH PRIVILEGES;"
+require_root() {
+    if [[ "${EUID}" -ne 0 ]]; then
+        echo "Run as root: sudo ./start-services.sh ${1:-setup}" >&2
+        exit 1
+    fi
+}
 
-# 4. Hand control back to RunPod
-exec /start.sh "$@"
+load_env() {
+    if [[ ! -f "${ENV_FILE}" ]]; then
+        echo "Missing ${ENV_FILE}. Run ./start-services.sh setup first." >&2
+        exit 1
+    fi
+    set -a
+    # shellcheck disable=SC1090
+    source "${ENV_FILE}"
+    set +a
+}
+
+create_env() {
+    if [[ -f "${ENV_FILE}" ]]; then
+        return
+    fi
+
+    local secret db_password
+    secret="$(openssl rand -hex 32)"
+    db_password="$(openssl rand -hex 24)"
+    cat > "${ENV_FILE}" <<EOF
+ENVIRONMENT=production
+SECRET_KEY=${secret}
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=invoice_app
+DB_PASSWORD=${db_password}
+DB_NAME=invoice_api
+API_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_API_URL=
+CORS_ORIGINS=
+VLLM_BASE_URL=http://127.0.0.1:8001
+VLLM_MODEL=Qwen/Qwen3-VL-8B-Thinking-FP8
+VLLM_MAX_MODEL_LEN=32768
+VLLM_GPU_MEMORY_UTILIZATION=0.90
+VLLM_MAX_NUM_SEQS=4
+VLLM_MAX_PIXELS=602112
+VLLM_MAX_OUTPUT_TOKENS=8192
+HF_HOME=/workspace/huggingface
+CHROMA_DIR=${DATA_DIR}/chroma
+DOCUMENT_STORAGE_DIR=${DATA_DIR}/documents
+EMBEDDING_DEVICE=cpu
+HF_TOKEN=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
+AWS_ACCESS_KEY_ID=AKIA6M5QTTXRLOTBUYHM
+AWS_SECRET_ACCESS_KEY=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
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=
+INVOICE_BOOK_COMPANY_NAME=
+EOF
+    chmod 600 "${ENV_FILE}"
+    echo "Created ${ENV_FILE}"
+}
+
+install_dependencies() {
+    load_env
+    apt-get update
+    apt-get install -y --no-install-recommends         git curl openssl python3.12 python3.12-dev python3.12-venv         nginx mariadb-server build-essential pkg-config libmariadb-dev
+    rm -rf /var/lib/apt/lists/*
+
+    mkdir -p "$(dirname "${VENV_DIR}")" "${DATA_DIR}" /workspace/huggingface
+    if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
+        python3.12 -m venv "${VENV_DIR}"
+    fi
+    "${VENV_DIR}/bin/pip" install --upgrade pip wheel
+    "${VENV_DIR}/bin/pip" install --upgrade vllm -r "${ROOT_DIR}/ai_invoice_api/requirements.txt"
+    command -v pm2 >/dev/null || npm install --global pm2
+
+    npm --prefix "${ROOT_DIR}/Frontend" ci
+    npm --prefix "${ROOT_DIR}/Frontend" run build
+}
+
+configure_database() {
+    load_env
+    [[ "${DB_NAME}" =~ ^[A-Za-z0-9_]+$ ]] || { echo "Invalid DB_NAME" >&2; exit 1; }
+    [[ "${DB_USER}" =~ ^[A-Za-z0-9_]+$ ]] || { echo "Invalid DB_USER" >&2; exit 1; }
+    [[ "${DB_PASSWORD}" =~ ^[A-Fa-f0-9]+$ ]] || { echo "DB_PASSWORD must be hexadecimal" >&2; exit 1; }
+
+    service mariadb stop >/dev/null 2>&1 || true
+    install -d -o mysql -g mysql -m 0750 "${DATA_DIR}/mysql"
+    install -d -o mysql -g mysql -m 0755 /run/mysqld
+    if [[ ! -d "${DATA_DIR}/mysql/mysql" ]]; then
+        mariadb-install-db --user=mysql --datadir="${DATA_DIR}/mysql" --skip-test-db
+    fi
+    cat > /etc/mysql/mariadb.conf.d/99-ca-ai-runpod.cnf <<EOF
+[mysqld]
+datadir=${DATA_DIR}/mysql
+bind-address=127.0.0.1
+port=3306
+socket=/run/mysqld/mysqld.sock
+pid-file=/run/mysqld/mysqld.pid
+EOF
+    service mariadb start
+
+    for _ in {1..30}; do
+        mariadb-admin --socket=/run/mysqld/mysqld.sock ping --silent && break
+        sleep 1
+    done
+    mariadb-admin --socket=/run/mysqld/mysqld.sock ping --silent
+    mariadb --socket=/run/mysqld/mysqld.sock <<SQL
+CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
+ALTER USER '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'127.0.0.1';
+FLUSH PRIVILEGES;
+SQL
+}
+
+configure_nginx() {
+    install -m 0644 "${ROOT_DIR}/deploy/runpod/nginx.conf" /etc/nginx/sites-available/ca-ai
+    ln -sfn /etc/nginx/sites-available/ca-ai /etc/nginx/sites-enabled/ca-ai
+    rm -f /etc/nginx/sites-enabled/default
+    nginx -t
+    service nginx restart
+}
+
+start_processes() {
+    load_env
+    [[ -x "${VENV_DIR}/bin/vllm" ]] || { echo "Missing vLLM environment. Run setup." >&2; exit 1; }
+    [[ -f "${ROOT_DIR}/Frontend/.next/BUILD_ID" ]] || { echo "Missing frontend build. Run setup." >&2; exit 1; }
+
+    mkdir -p "${CHROMA_DIR}" "${HF_HOME}"
+    pm2 delete ca-ai-vllm ca-ai-backend ca-ai-frontend >/dev/null 2>&1 || true
+    pm2 start "${PM2_CONFIG}" --update-env
+    pm2 save --force
+
+    for _ in {1..60}; do
+        if curl --fail --silent http://127.0.0.1:8000/ >/dev/null             && curl --fail --silent http://127.0.0.1:3001/ >/dev/null; then
+            echo "Frontend and API ready. vLLM continues loading model in background."
+            echo "Open Runpod HTTP port 3000. Check model: ./start-services.sh status"
+            return
+        fi
+        sleep 2
+    done
+    echo "Startup check timed out. Inspect: ./start-services.sh logs" >&2
+    exit 1
+}
+
+setup() {
+    require_root setup
+    create_env
+    install_dependencies
+    configure_database
+    configure_nginx
+    start_processes
+}
+
+start() {
+    require_root start
+    configure_database
+    configure_nginx
+    start_processes
+}
+
+stop() {
+    pm2 delete ca-ai-vllm ca-ai-backend ca-ai-frontend >/dev/null 2>&1 || true
+    service nginx stop >/dev/null 2>&1 || true
+    service mariadb stop >/dev/null 2>&1 || true
+}
+
+status() {
+    pm2 status || true
+    printf "API:      "
+    curl --fail --silent http://127.0.0.1:8000/ || true
+    printf "\nFrontend: "
+    curl --fail --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3001/ || true
+    printf "\nvLLM:     "
+    curl --fail --silent http://127.0.0.1:8001/health && echo ready || echo loading-or-failed
+}
+
+case "${1:-status}" in
+    setup) setup ;;
+    start) start ;;
+    stop) stop ;;
+    restart) stop; start ;;
+    status) status ;;
+    logs)
+        if [[ $# -gt 1 ]]; then pm2 logs "$2"; else pm2 logs; fi
+        ;;
+    *) echo "Usage: $0 {setup|start|stop|restart|status|logs [process]}" >&2; exit 2 ;;
+esac

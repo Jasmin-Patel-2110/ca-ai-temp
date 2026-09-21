@@ -22,12 +22,13 @@ import requests
 from PIL import Image
 
 VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8001").rstrip("/")
-VISION_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen2.5-VL-7B-Instruct")
+VISION_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen3-VL-8B-Thinking-FP8")
 _VLLM_API_KEY = os.getenv("VLLM_API_KEY", "").strip()
 # Bookkeeping entity (e.g. "Satyawani"). If set: entity in Bill To/client → Purchase; entity as supplier → Sales
 INVOICE_BOOK_COMPANY_NAME = os.getenv("INVOICE_BOOK_COMPANY_NAME", "").strip()
 
 VLLM_MAX_PIXELS = int(os.getenv("VLLM_MAX_PIXELS", "602112"))  # must match --mm-processor-kwargs
+VLLM_MAX_OUTPUT_TOKENS = int(os.getenv("VLLM_MAX_OUTPUT_TOKENS", "8192"))
 
 # ── image helpers ─────────────────────────────────────────────────────────────
 
@@ -324,7 +325,8 @@ Use descriptive snake_case keys. Do NOT include null keys — only add keys wher
 
 def _call_vision_llm(b64_images: list[str], prompt: str) -> str:
     """POST to vLLM's OpenAI-compatible /v1/chat/completions (no OpenAI SDK)."""
-    max_tokens = min(16384, 2048 * max(1, len(b64_images)))
+    # Thinking models need room for hidden reasoning before final JSON.
+    max_tokens = VLLM_MAX_OUTPUT_TOKENS
     content: list[dict] = []
     for b64 in b64_images:
         content.append(

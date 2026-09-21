@@ -1,1 +1,5 @@
 .cache
+.env.runpod
+*.log
+__pycache__/
+*.py[cod]

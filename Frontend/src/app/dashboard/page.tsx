@@ -87,7 +87,7 @@ export default function DashboardPage() {
       // Patch recent invoices with full details since dashboard stats might lack buyer/seller names
       try {
         const userId = String(user?.sub ?? "6");
-        const url = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/invoices/all?user_id=${encodeURIComponent(userId)}`;
+        const url = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/invoices/all?user_id=${encodeURIComponent(userId)}`;
         const token = localStorage.getItem("auth_token");
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }});
         if (res.ok) {

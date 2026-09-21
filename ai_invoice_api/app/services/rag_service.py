@@ -20,10 +20,13 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Persist ChromaDB data alongside the app
-_CHROMA_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "chroma_db",
+# Keep mutable data on the Runpod network volume when configured.
+_CHROMA_DIR = os.getenv(
+    "CHROMA_DIR",
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "chroma_db",
+    ),
 )
 
 _client = None
@@ -39,7 +42,10 @@ def _get_embedder():
             from sentence_transformers import SentenceTransformer
 
             logger.info("Loading embedding model all-MiniLM-L6-v2 …")
-            _embedder = SentenceTransformer("all-MiniLM-L6-v2")
+            _embedder = SentenceTransformer(
+                "all-MiniLM-L6-v2",
+                device=os.getenv("EMBEDDING_DEVICE", "cpu"),
+            )
             logger.info("Embedding model ready.")
         except ImportError:
             raise RuntimeError(
