@@ -3,6 +3,9 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "../..");
 const venv = process.env.VENV_DIR || "/workspace/venvs/ca-ai";
 const model = process.env.VLLM_MODEL || "Qwen/Qwen3-VL-8B-Thinking-FP8";
+const runtimeEnv = { ...process.env, pmx: "false" };
+delete runtimeEnv.io;
+delete runtimeEnv.trace;
 
 module.exports = {
   apps: [
@@ -29,7 +32,7 @@ module.exports = {
       restart_delay: 10000,
       max_restarts: 10,
       kill_timeout: 30000,
-      env: process.env,
+      env: runtimeEnv,
     },
     {
       name: "ca-ai-backend",
@@ -40,7 +43,7 @@ module.exports = {
       autorestart: true,
       restart_delay: 3000,
       kill_timeout: 10000,
-      env: process.env,
+      env: runtimeEnv,
     },
     {
       name: "ca-ai-frontend",
@@ -50,7 +53,7 @@ module.exports = {
       autorestart: true,
       restart_delay: 3000,
       kill_timeout: 10000,
-      env: process.env,
+      env: runtimeEnv,
     },
   ],
 };

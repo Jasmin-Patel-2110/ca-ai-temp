@@ -12,6 +12,7 @@ ROOT_DIR="${SCRIPT_DIR}"
 ENV_FILE="${ROOT_DIR}/.env.runpod"
 VENV_DIR="${VENV_DIR:-/workspace/venvs/ca-ai}"
 DATA_DIR="${DATA_DIR:-/workspace/ca-ai-data}"
+MYSQL_DATA_DIR="${MYSQL_DATA_DIR:-/var/lib/mysql}"
 PM2_CONFIG="${ROOT_DIR}/deploy/runpod/ecosystem.config.cjs"
 
 require_root() {
@@ -30,6 +31,12 @@ load_env() {
     # shellcheck disable=SC1090
     source "${ENV_FILE}"
     set +a
+    export NO_PROXY="${NO_PROXY:-127.0.0.1,localhost}"
+    export no_proxy="${no_proxy:-${NO_PROXY}}"
+}
+
+local_curl() {
+    curl --noproxy '*' "$@"
 }
 
 create_env() {
@@ -48,9 +55,12 @@ DB_PORT=3306
 DB_USER=invoice_app
 DB_PASSWORD=${db_password}
 DB_NAME=invoice_api
+MYSQL_DATA_DIR=/var/lib/mysql
 API_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_API_URL=
 CORS_ORIGINS=
+NO_PROXY=127.0.0.1,localhost
+no_proxy=127.0.0.1,localhost
 VLLM_BASE_URL=http://127.0.0.1:8001
 VLLM_MODEL=Qwen/Qwen3-VL-8B-Thinking-FP8
 VLLM_MAX_MODEL_LEN=32768
@@ -62,10 +72,10 @@ HF_HOME=/workspace/huggingface
 CHROMA_DIR=${DATA_DIR}/chroma
 DOCUMENT_STORAGE_DIR=${DATA_DIR}/documents
 EMBEDDING_DEVICE=cpu
-HF_TOKEN=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
-AWS_ACCESS_KEY_ID=AKIA6M5QTTXRLOTBUYHM
-AWS_SECRET_ACCESS_KEY=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
-AWS_REGION=us-east-1
+HF_TOKEN=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=ap-south-1
 S3_BUCKET_NAME=
 INVOICE_BOOK_COMPANY_NAME=
 EOF
@@ -76,7 +86,9 @@ EOF
 install_dependencies() {
     load_env
     apt-get update
-    apt-get install -y --no-install-recommends         git curl openssl python3.12 python3.12-dev python3.12-venv         nginx mariadb-server build-essential pkg-config libmariadb-dev
+    apt-get install -y --no-install-recommends \
+        git curl openssl python3.12 python3.12-dev python3.12-venv \
+        nginx mariadb-server build-essential pkg-config libmariadb-dev psmisc
     rm -rf /var/lib/apt/lists/*
 
     mkdir -p "$(dirname "${VENV_DIR}")" "${DATA_DIR}" /workspace/huggingface
@@ -98,14 +110,14 @@ configure_database() {
     [[ "${DB_PASSWORD}" =~ ^[A-Fa-f0-9]+$ ]] || { echo "DB_PASSWORD must be hexadecimal" >&2; exit 1; }
 
     service mariadb stop >/dev/null 2>&1 || true
-    install -d -o mysql -g mysql -m 0750 "${DATA_DIR}/mysql"
+    install -d -o mysql -g mysql -m 0750 "${MYSQL_DATA_DIR}"
     install -d -o mysql -g mysql -m 0755 /run/mysqld
-    if [[ ! -d "${DATA_DIR}/mysql/mysql" ]]; then
-        mariadb-install-db --user=mysql --datadir="${DATA_DIR}/mysql" --skip-test-db
+    if [[ ! -d "${MYSQL_DATA_DIR}/mysql" ]]; then
+        mariadb-install-db --user=mysql --datadir="${MYSQL_DATA_DIR}" --skip-test-db
     fi
     cat > /etc/mysql/mariadb.conf.d/99-ca-ai-runpod.cnf <<EOF
 [mysqld]
-datadir=${DATA_DIR}/mysql
+datadir=${MYSQL_DATA_DIR}
 bind-address=127.0.0.1
 port=3306
 socket=/run/mysqld/mysqld.sock
@@ -138,15 +150,25 @@ configure_nginx() {
 start_processes() {
     load_env
     [[ -x "${VENV_DIR}/bin/vllm" ]] || { echo "Missing vLLM environment. Run setup." >&2; exit 1; }
+    if ! command -v fuser >/dev/null 2>&1; then
+        apt-get update
+        apt-get install -y --no-install-recommends psmisc
+        rm -rf /var/lib/apt/lists/*
+    fi
+    command -v fuser >/dev/null 2>&1 || { echo "Missing fuser; install psmisc" >&2; exit 1; }
     [[ -f "${ROOT_DIR}/Frontend/.next/BUILD_ID" ]] || { echo "Missing frontend build. Run setup." >&2; exit 1; }
 
     mkdir -p "${CHROMA_DIR}" "${HF_HOME}"
     pm2 delete ca-ai-vllm ca-ai-backend ca-ai-frontend >/dev/null 2>&1 || true
+    # vLLM can leave its API-server child alive after PM2 stops the launcher.
+    # Clear dedicated internal ports before starting a fresh process set.
+    fuser -k 3001/tcp 8000/tcp 8001/tcp >/dev/null 2>&1 || true
     pm2 start "${PM2_CONFIG}" --update-env
     pm2 save --force
 
     for _ in {1..60}; do
-        if curl --fail --silent http://127.0.0.1:8000/ >/dev/null             && curl --fail --silent http://127.0.0.1:3001/ >/dev/null; then
+        if local_curl --fail --silent --max-time 5 http://127.0.0.1:8000/ >/dev/null \
+            && local_curl --fail --silent --max-time 5 http://127.0.0.1:3001/ >/dev/null; then
             echo "Frontend and API ready. vLLM continues loading model in background."
             echo "Open Runpod HTTP port 3000. Check model: ./start-services.sh status"
             return
@@ -175,18 +197,26 @@ start() {
 
 stop() {
     pm2 delete ca-ai-vllm ca-ai-backend ca-ai-frontend >/dev/null 2>&1 || true
+    if command -v fuser >/dev/null 2>&1; then
+        fuser -k 3001/tcp 8000/tcp 8001/tcp >/dev/null 2>&1 || true
+    fi
     service nginx stop >/dev/null 2>&1 || true
     service mariadb stop >/dev/null 2>&1 || true
 }
 
 status() {
+    load_env
     pm2 status || true
     printf "API:      "
-    curl --fail --silent http://127.0.0.1:8000/ || true
+    local_curl --fail --silent --max-time 5 http://127.0.0.1:8000/ || true
     printf "\nFrontend: "
-    curl --fail --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3001/ || true
+    local_curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3001/ || true
     printf "\nvLLM:     "
-    curl --fail --silent http://127.0.0.1:8001/health && echo ready || echo loading-or-failed
+    if local_curl --fail --silent --max-time 5 http://127.0.0.1:8001/health >/dev/null; then
+        echo ready
+    else
+        echo loading-or-failed
+    fi
 }
 
 case "${1:-status}" in
