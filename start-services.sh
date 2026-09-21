@@ -140,9 +140,10 @@ SQL
 }
 
 configure_nginx() {
-    install -m 0644 "${ROOT_DIR}/deploy/runpod/nginx.conf" /etc/nginx/sites-available/ca-ai
-    ln -sfn /etc/nginx/sites-available/ca-ai /etc/nginx/sites-enabled/ca-ai
-    rm -f /etc/nginx/sites-enabled/default
+    # RunPod's base image replaces the Ubuntu main config with proxy servers
+    # for ports already owned by its other services. Use an isolated config so
+    # those inherited listeners cannot collide with this application.
+    install -m 0644 "${ROOT_DIR}/deploy/runpod/nginx.conf" /etc/nginx/nginx.conf
     nginx -t
     service nginx restart
 }
