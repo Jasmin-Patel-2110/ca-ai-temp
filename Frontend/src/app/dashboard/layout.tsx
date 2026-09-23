@@ -3,33 +3,44 @@
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/redux/store";
 
 const pageTitles: Record<string, string> = {
-  "/dashboard":          "Dashboard",
+  "/dashboard": "Dashboard",
   "/dashboard/invoices": "Invoices",
   "/dashboard/settings": "Settings",
-  "/dashboard/export":   "Export Data",
+  "/dashboard/export": "Export Data",
 };
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+const subscribeToHydration = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const title = pageTitles[pathname] ?? "LedgerAI";
 
   const token = useSelector((state: RootState) => state.auth.token);
-  const [mounted, setMounted] = useState(false);
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
 
   useEffect(() => {
-    setMounted(true);
-    if (!token) {
-      router.push("/login");
+    if (hydrated && !token) {
+      router.replace("/login");
     }
-  }, [token, router]);
+  }, [hydrated, token, router]);
 
-  if (!mounted || !token) {
+  if (!hydrated || !token) {
     return null;
   }
 
