@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import apiService from "@/lib/apiService";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -110,6 +111,11 @@ interface ApiInvoice {
   additional_detail?: Record<string, unknown> | null;
   [key: string]: unknown;
 }
+interface ApiInvoiceSearchResult extends ApiInvoice {
+  clientName?: string;
+  type?: string;
+  totalAmount?: number | string;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -144,8 +150,6 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> =
 function formatStatus(s: string) {
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 function getToken(): string {
   if (typeof window === "undefined") return "";
@@ -525,18 +529,22 @@ export default function InvoicesPage() {
     setError(null);
     try {
       const userId = String(user?.sub ?? "6");
-      const url = `${BASE_URL}/invoices/all?user_id=${encodeURIComponent(userId)}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      const data = await res.json();
+      const data = await apiService.get<{ invoices?: ApiInvoice[] }>(
+        `/invoices/all?user_id=${encodeURIComponent(userId)}`,
+        { headers: { Authorization: `Bearer ${getToken()}` } },
+      );
       setInvoices(data.invoices ?? []);
       setEditedInvoices({});
       setSelectedIds(new Set());
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load invoices.");
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      setError(
+        typeof status === "number"
+          ? `Server error: ${status}`
+          : err instanceof Error
+            ? err.message
+            : "Failed to load invoices.",
+      );
     } finally {
       setLoading(false);
     }
@@ -546,17 +554,15 @@ export default function InvoicesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `${BASE_URL}/invoices/search?q=${encodeURIComponent(q)}&top_k=20`,
+      const data = await apiService.get<{ results?: ApiInvoiceSearchResult[] }>(
+        `/invoices/search?q=${encodeURIComponent(q)}&top_k=20`,
         { headers: { Authorization: `Bearer ${getToken()}` } },
       );
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      const data = await res.json();
       const hits: ApiInvoice[] = (data.results ?? []).map(
-        (r: Record<string, unknown>) => ({
+        (r) => ({
           id: r.id,
           invoice_number: r.invoice_number,
-          invoice_id: r.invoice_id ?? r.id ?? "—",
+          invoice_id: String(r.invoice_id ?? r.id ?? "—"),
           client_name: r.client_name ?? r.clientName,
           buyer_party_name: r.buyer_party_name,
           seller_party_name: r.seller_party_name,
@@ -581,7 +587,14 @@ export default function InvoicesPage() {
       setEditedInvoices({});
       setSelectedIds(new Set());
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Search failed.");
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      setError(
+        typeof status === "number"
+          ? `Server error: ${status}`
+          : err instanceof Error
+            ? err.message
+            : "Search failed.",
+      );
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,8 @@
 "use server";
 
 import { cookies } from "next/headers";
+import axios from "axios";
+import apiService from "@/lib/apiService";
 
 export interface DashboardData {
   total_invoices: number;
@@ -31,23 +33,19 @@ export async function getDashboardStats(): Promise<{ success: boolean; data?: Da
       return { success: false, error: "Not authenticated" };
     }
 
-    const baseUrl = process.env.API_URL || "http://127.0.0.1:8000";
-    const response = await fetch(`${baseUrl}/invoices/dashboard`, {
-      method: "GET",
+    const response = await apiService.get<{ data?: DashboardData }>("/invoices/dashboard", {
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      cache: "no-store",
     });
 
-    if (!response.ok) {
-      return { success: false, error: `API error: ${response.status}` };
+    return { success: true, data: response?.data };
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response) {
+      return { success: false, error: `API error: ${error.response.status}` };
     }
 
-    const json = await response.json();
-    return { success: true, data: json?.data };
-  } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to fetch dashboard data";
     return { success: false, error: errorMessage };
   }

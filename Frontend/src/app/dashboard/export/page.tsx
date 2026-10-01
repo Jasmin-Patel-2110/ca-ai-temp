@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useRedux } from "@/hooks/useRedux";
 import * as xlsx from "xlsx";
+import apiService from "@/lib/apiService";
 
 // Shadcn UI components
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,8 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 function getToken(): string {
   if (typeof window === "undefined") return "";
@@ -124,17 +123,20 @@ export default function ExportPage() {
     setError(null);
     try {
       const userId = String(user?.sub ?? "6");
-      const url = `${BASE_URL}/invoices/all?user_id=${encodeURIComponent(userId)}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      const json = await res.json();
+      const json = await apiService.get<{ invoices?: Record<string, any>[] }>(
+        `/invoices/all?user_id=${encodeURIComponent(userId)}`,
+        { headers: { Authorization: `Bearer ${getToken()}` } },
+      );
       const rawInvoices = json.invoices ?? [];
       setData(rawInvoices.map(mapInvoiceForExport));
     } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
       setError(
-        err instanceof Error ? err.message : "Failed to load data for export.",
+        typeof status === "number"
+          ? `Server error: ${status}`
+          : err instanceof Error
+            ? err.message
+            : "Failed to load data for export.",
       );
     } finally {
       setLoading(false);
