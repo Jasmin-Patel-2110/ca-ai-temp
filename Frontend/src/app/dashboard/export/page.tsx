@@ -12,9 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useRedux } from "@/hooks/useRedux";
 import * as xlsx from "xlsx";
-import apiService from "@/lib/apiService";
+import { getInvoicesAction } from "@/app/actions/invoices";
 
 // Shadcn UI components
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,11 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-function getToken(): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem("auth_token") ?? "";
-}
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> =
   {
@@ -115,19 +109,14 @@ export default function ExportPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { success, errorAlert } = useToast();
-  const { selector } = useRedux();
-  const user = selector((s) => s.auth.user);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const userId = String(user?.sub ?? "6");
-      const json = await apiService.get<{ invoices?: Record<string, any>[] }>(
-        `/invoices/all?user_id=${encodeURIComponent(userId)}`,
-        { headers: { Authorization: `Bearer ${getToken()}` } },
-      );
-      const rawInvoices = json.invoices ?? [];
+      const result = await getInvoicesAction();
+      if (!result.success) throw new Error(result.error);
+      const rawInvoices = result.data.invoices ?? [];
       setData(rawInvoices.map(mapInvoiceForExport));
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -141,7 +130,7 @@ export default function ExportPage() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     fetchAll();

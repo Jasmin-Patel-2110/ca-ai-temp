@@ -5,7 +5,7 @@ import { FileText, Clock, CheckCircle, UserCircle2, RefreshCw } from "lucide-rea
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/redux/store";
 import { motion } from "framer-motion";
-import apiService from "@/lib/apiService";
+import { getInvoicesAction } from "@/app/actions/invoices";
 import { getDashboardStats, DashboardData, RecentInvoice } from "@/app/actions/dashboard";
 
 // ── Status style map (normalised to lowercase keys from API) ──────────────────
@@ -87,12 +87,9 @@ export default function DashboardPage() {
       
       // Patch recent invoices with full details since dashboard stats might lack buyer/seller names
       try {
-        const userId = String(user?.sub ?? "6");
-        const url = `/invoices/all?user_id=${encodeURIComponent(userId)}`;
-        const token = localStorage.getItem("auth_token");
-        const json = await apiService.get<{ invoices?: any[] }>(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const invoicesResult = await getInvoicesAction();
+        if (!invoicesResult.success) throw new Error(invoicesResult.error);
+        const json = invoicesResult.data;
         if (json.invoices) {
           const sorted = json.invoices.sort((a: any, b: any) => (b.id || 0) - (a.id || 0)).slice(0, 5);
           setData(prev => prev ? { ...prev, recent_invoices: sorted } : null);

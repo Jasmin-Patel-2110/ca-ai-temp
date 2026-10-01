@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import apiService from "@/lib/apiService";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -60,11 +59,12 @@ import { Badge } from "@/components/ui/badge";
 import { BulkUpload } from "@/components/upload/BulkUpload";
 import { useToast } from "@/hooks/use-toast";
 import {
+  getInvoicesAction,
+  searchInvoicesAction,
   deleteInvoiceAction,
   bulkUpdateInvoicesAction,
   bulkVerifyInvoicesAction,
 } from "@/app/actions/invoices";
-import { useRedux } from "@/hooks/useRedux";
 import {
   getCategoriesByIndustry,
   getSubCategories,
@@ -149,11 +149,6 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> =
 
 function formatStatus(s: string) {
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function getToken(): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem("auth_token") ?? "";
 }
 
 function getInvoiceNumber(inv: ApiInvoice): string {
@@ -397,8 +392,6 @@ export default function InvoicesPage() {
 
   const router = useRouter();
   const { success, errorAlert } = useToast();
-  const { selector } = useRedux();
-  const user = selector((s) => s.auth.user);
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -528,12 +521,9 @@ export default function InvoicesPage() {
     setLoading(true);
     setError(null);
     try {
-      const userId = String(user?.sub ?? "6");
-      const data = await apiService.get<{ invoices?: ApiInvoice[] }>(
-        `/invoices/all?user_id=${encodeURIComponent(userId)}`,
-        { headers: { Authorization: `Bearer ${getToken()}` } },
-      );
-      setInvoices(data.invoices ?? []);
+      const result = await getInvoicesAction();
+      if (!result.success) throw new Error(result.error);
+      setInvoices(result.data.invoices ?? []);
       setEditedInvoices({});
       setSelectedIds(new Set());
     } catch (err: unknown) {
@@ -548,18 +538,16 @@ export default function InvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   const fetchSearch = useCallback(async (q: string) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiService.get<{ results?: ApiInvoiceSearchResult[] }>(
-        `/invoices/search?q=${encodeURIComponent(q)}&top_k=20`,
-        { headers: { Authorization: `Bearer ${getToken()}` } },
-      );
-      const hits: ApiInvoice[] = (data.results ?? []).map(
-        (r) => ({
+      const result = await searchInvoicesAction(q);
+      if (!result.success) throw new Error(result.error);
+      const hits: ApiInvoice[] = (result.data.results ?? []).map(
+        (r: ApiInvoiceSearchResult) => ({
           id: r.id,
           invoice_number: r.invoice_number,
           invoice_id: String(r.invoice_id ?? r.id ?? "—"),

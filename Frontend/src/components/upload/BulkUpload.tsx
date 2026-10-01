@@ -11,10 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import apiService from "@/lib/apiService";
-import { useRedux } from "@/hooks/useRedux";
 import { bulkUploadAction } from "@/app/actions/upload";
 import {
+  getInvoicesAction,
   getInvoiceByIdAction,
   bulkUpdateInvoicesAction,
   bulkVerifyInvoicesAction,
@@ -138,13 +137,6 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> =
 
 function formatStatus(s: string) {
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-function getToken(): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem("auth_token") ?? "";
 }
 
 // ─── Document Preview (same as detail page) ──────────────────────────────────
@@ -393,9 +385,6 @@ export function BulkUpload({ onUploadSuccess }: BulkUploadProps) {
   const [clientName, setClientName] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const { success, errorAlert } = useToast();
-  const { selector } = useRedux();
-  const user = selector((s) => s.auth.user);
-  const userId = user?.sub ?? "6";
 
   // ── Preview state ─────────────────────────────────────────────────────────
   const [showPreview, setShowPreview] = useState(false);
@@ -430,27 +419,25 @@ export function BulkUpload({ onUploadSuccess }: BulkUploadProps) {
 
   const snapshotExistingInvoices = useCallback(async (): Promise<Set<number>> => {
     try {
-      const token = getToken();
-      const data = await apiService.get<any>(`/invoices/all?user_id=${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const result = await getInvoicesAction();
+      if (!result.success) throw new Error(result.error);
+      const data = result.data;
       const ids = (data.invoices ?? []).map((inv: any) => Number(inv.id));
       return new Set(ids);
     } catch {
       return new Set();
     }
-  }, [userId]);
+  }, []);
 
   // ── Fetch invoice details for preview (only NEW invoices) ──────────────────
 
   const fetchInvoiceDetails = useCallback(async (existingIds: Set<number>) => {
     setPreviewLoading(true);
     try {
-      const token = getToken();
       // Fetch all invoices after upload
-      const data = await apiService.get<any>(`/invoices/all?user_id=${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const result = await getInvoicesAction();
+      if (!result.success) throw new Error(result.error);
+      const data = result.data;
       const allInvoices = data.invoices ?? [];
 
       // Find only NEW invoices (IDs that didn't exist before upload)
@@ -503,7 +490,7 @@ export function BulkUpload({ onUploadSuccess }: BulkUploadProps) {
     } finally {
       setPreviewLoading(false);
     }
-  }, [userId]);
+  }, []);
 
   // ── Upload processing ─────────────────────────────────────────────────────
 
